@@ -52,7 +52,16 @@ svg.append("svg:rect")
 redraw();
 
 function redraw() {
-  if (d3.event) d3.event.transform(x, y);
+
+  if ( d3.event ) {
+    if ( d3.event.fulcrum[0] < padding[3] ) {
+      d3.event.transform(null, y);
+    } else if ( d3.event.fulcrum[1] > size[1] + padding[0] ) {
+      d3.event.transform(x, null);
+    } else {
+      d3.event.transform(x, y);
+    }
+  }
 
   var fx = x.tickFormat(10),
       fy = y.tickFormat(10);

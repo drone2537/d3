@@ -26,6 +26,8 @@ d3.behavior.zoom = function() {
     pan = {
       x0: x - d3.event.clientX,
       y0: y - d3.event.clientY,
+      xe: d3.event.clientX,
+      ye: d3.event.clientY,
       target: this,
       data: d,
       index: i
@@ -74,6 +76,8 @@ d3.behavior.zoom = function() {
         x0: x,
         y0: y,
         z0: z,
+        xe: p[0],
+        ye: p[1],
         x1: x - p[0],
         y1: y - p[1]
       };
@@ -113,6 +117,7 @@ d3.behavior.zoom = function() {
     d3.event = {
       scale: k,
       translate: [x, y],
+      fulcrum: ( zoom ? [zoom.xe, zoom.ye] : [pan.xe, pan.ye] ),
       transform: function(sx, sy) {
         if (sx) transform(sx, x);
         if (sy) transform(sy, y);
