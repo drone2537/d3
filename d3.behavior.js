@@ -5,7 +5,12 @@ d3.behavior.zoom = function() {
 
   var x = 0,
       y = 0,
+      w = 0,
       z = 0,
+      oldx = 0,
+      oldy = 0,
+      oldw = 0,
+      oldz = 0,
       listeners = [],
       pan,
       zoom;
@@ -39,6 +44,8 @@ d3.behavior.zoom = function() {
   function mousemove() {
     zoom = null;
     if (pan) {
+      oldx = x;
+      oldy = y;
       x = d3.event.clientX + pan.x0;
       y = d3.event.clientY + pan.y0;
       dispatch.call(pan.target, pan.data, pan.index);
@@ -75,6 +82,7 @@ d3.behavior.zoom = function() {
       zoom = {
         x0: x,
         y0: y,
+        w0: w,
         z0: z,
         xe: p[0],
         ye: p[1],
@@ -84,7 +92,10 @@ d3.behavior.zoom = function() {
     }
 
     // adjust zoom level
+    oldw = w;
+    oldz = z;
     if (e.type === "dblclick") {
+      w = e.shiftKey ? Math.ceil(w - 1) : Math.floor(w + 1);
       z = e.shiftKey ? Math.ceil(z - 1) : Math.floor(z + 1);
     } else {
       var delta = e.wheelDelta || -e.detail;
@@ -98,35 +109,45 @@ d3.behavior.zoom = function() {
         }
         delta *= .005;
       }
+      w += delta;
       z += delta;
     }
 
     // adjust x and y to center around mouse location
     var k = Math.pow(2, z - zoom.z0) - 1;
+    oldx = x;
+    oldy = y;
     x = zoom.x0 + zoom.x1 * k;
     y = zoom.y0 + zoom.y1 * k;
 
+
     // dispatch redraw
     dispatch.call(this, d, i);
+    zoom = null;
+    pan = null;
   }
 
   function dispatch(d, i) {
     var o = d3.event, // Events can be reentrant (e.g., focus).
-        k = Math.pow(2, z);
+        kx = Math.pow(2, w),
+        ky = Math.pow(2, z),
+        revertx = false,
+        reverty = false;
 
     d3.event = {
-      scale: k,
+      scale: kx,
+      scaley: ky,
       translate: [x, y],
       fulcrum: ( zoom ? [zoom.xe, zoom.ye] : [pan.xe, pan.ye] ),
       transform: function(sx, sy) {
-        if (sx) transform(sx, x);
-        if (sy) transform(sy, y);
+        if (sx) transform(sx, x, kx); else revertx = true;
+        if (sy) transform(sy, y, ky); else reverty = true;
       }
     };
 
-    function transform(scale, o) {
+    function transform(scale, o, factor) {
       var domain = scale.__domain || (scale.__domain = scale.domain()),
-          range = scale.range().map(function(v) { return (v - o) / k; });
+          range = scale.range().map(function(v) { return (v - o) / ( arguments.length > 2 ? factor : kx ); });
       scale.domain(domain).domain(range.map(scale.invert));
     }
 
@@ -135,6 +156,16 @@ d3.behavior.zoom = function() {
         listeners[j].call(this, d, i);
       }
     } finally {
+      if ( revertx ) {
+        x = oldx;
+        w = oldw;
+        revertx = false;
+      }
+      if ( reverty ) {
+        y = oldy;
+        z = oldz;
+        reverty = false;
+      }
       d3.event = o;
     }
   }
